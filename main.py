@@ -50,3 +50,11 @@
     # Response: Image details (URL, metadata)
 #4. Get a paginated list of all images uploaded by a user. (GET)
     # /images?page=1&limit=10
+
+
+
+### CHECK LIST ###
+#1. Rate limiting to prevent abuse
+#2. Caching images to improve performance
+#3. Error handling and validation
+#4. Message queue to process image transformations asynchronously
