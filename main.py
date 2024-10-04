@@ -49,3 +49,4 @@
     # /images/<image_id>
     # Response: Image details (URL, metadata)
 #4. Get a paginated list of all images uploaded by a user. (GET)
+    # /images?page=1&limit=10
