@@ -38,4 +38,14 @@
     ##c. WEBP
 #4. List all uploaded images by a user with metadata.
 
-
+## Image Management Endpoints
+#1. Upload an image. (POST)
+    # /images
+    # Response: Upload image details, (URL, metadata)
+#2. Apply Transformation to an image (POST)
+    # /images/<image_id>/transform
+    # Response: transformed image details (URL, metadata)
+#3. Retrieve an image (GET)
+    # /images/<image_id>
+    # Response: Image details (URL, metadata)
+#4. Get a paginated list of all images uploaded by a user. (GET)
