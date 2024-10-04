@@ -130,6 +130,7 @@ ENV/
 env.bak/
 venv.bak/
 
+
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -164,3 +165,6 @@ cython_debug/
 
 ## Drawio meta files
 .$kairos.drawio.bkp
+
+## Secrets
+.secret
