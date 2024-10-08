@@ -204,7 +204,7 @@ async def get_images(current_user: dict = Depends(get_current_user)):
     try:
         response = s3.list_objects_v2(bucket=BUCKET_NAME)
         if 'Contents' in response:
-            return [{"filename": obj["key"], f"url": f"https://{BUCKET_NAME}.s3.amazonaws.com/{obj["key"]}"} for obj in response['Contents']]
+            return [{"filename": obj["Key"], f"url": f"https://{BUCKET_NAME}.s3.amazonaws.com/{obj['Key']}"} for obj in response['Contents']]
         else:
             return []
     except NoCredentialsError:
