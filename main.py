@@ -169,7 +169,7 @@ async def upload_image(file: UploadFile = File(...), user: dict = Depends(get_cu
         s3.upload_fileobj(file.file, BUCKET_NAME, file.filename)
         return {"filename": file.filename, "url": f"https://{BUCKET_NAME}.s3.amazonaws.com/{file.filename}"}
     except NoCredentialsError:
-        return HTTPException(status_code=500, detail="Credentials not available")
+        raise HTTPException(status_code=500, detail="Credentials not available")
     
 
 @app.post("/images/resize/")
@@ -181,9 +181,9 @@ async def resize_image(width: int, height: int, file: UploadFile = File(...), cu
         resized_image.save(buffer, format="JPEG")
         buffer.seek(0)
         s3.upload_fileobj(buffer, BUCKET_NAME, f"resized_{file.filename}")
-        return {"filename": f"resuzed_{file.filename}", "url": f"https://{BUCKET_NAME}.s3.amazonaws.com/resized_{file.filename}"}
+        return {"filename": f"resized_{file.filename}", "url": f"https://{BUCKET_NAME}.s3.amazonaws.com/resized_{file.filename}"}
     except NoCredentialsError:
-        return HTTPException(status_code=500, detail="Credentials not available")
+        raise HTTPException(status_code=500, detail="Credentials not available")
     
 
 @app.post("/images/rotate/")
@@ -197,7 +197,7 @@ async def rotate_image(degrees: int, file: UploadFile = File(...), current_user:
         s3.upload_fileobj(buffer, BUCKET_NAME, f"rotated_{file.filename}")
         return {"filename": f"rotated_{file.filename}", "url": f"https://{BUCKET_NAME}.s3.amazonaws.com/rotated_{file.filename}"}
     except NoCredentialsError:
-        return HTTPException(status_code=500, detail="Credentials not available")
+        raise HTTPException(status_code=500, detail="Credentials not available")
     
 app.get("/images/")
 async def get_images(current_user: dict = Depends(get_current_user)):
@@ -208,5 +208,5 @@ async def get_images(current_user: dict = Depends(get_current_user)):
         else:
             return []
     except NoCredentialsError:
-        return HTTPException(status_code=500, detail="Credentials not available")
+        raise HTTPException(status_code=500, detail="Credentials not available")
 
