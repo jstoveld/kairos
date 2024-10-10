@@ -12,7 +12,7 @@ provider:
     COGNITO_USER_POOL_ID: ${env:COGNITO_USER_POOL_ID}
     COGNITO_APP_CLIENT_ID: ${env:COGNITO_APP_CLIENT_ID}
     COGNITO_REGION: ${env:COGNITO_REGION}
-    BUCKET_NAME: ${env:BUCKET_NAME}
+    BUCKET_NAME: ${self:custom.buckets.${self:provider.stage}}
     STAGE: ${opt:stage, 'dev'}
 
 functions:
@@ -37,33 +37,7 @@ custom:
     packRequirements: false
   pythonRequirements:
     dockerizePip: true
-  stages:
-    dev:
-      bucketName: your-dev-bucket-name
-      cognitoUserPoolName: your-dev-cognito-user-pool
-      cognitoAppClientName: your-dev-cognito-app-client
-    feature:
-      bucketName: your-feature-bucket-name
-      cognitoUserPoolName: your-feature-cognito-user-pool
-      cognitoAppClientName: your-feature-cognito-app-client
-    main:
-      bucketName: your-prod-bucket-name
-      cognitoUserPoolName: your-prod-cognito-user-pool
-      cognitoAppClientName: your-prod-cognito-app-client
-
-resources:
-  Resources:
-    S3Bucket:
-      Type: AWS::S3::Bucket
-      Properties:
-        BucketName: ${self:custom.stages.${self:provider.stage}.bucketName}
-    CognitoUserPool:
-      Type: AWS::Cognito::UserPool
-      Properties:
-        UserPoolName: ${self:custom.stages.${self:provider.stage}.cognitoUserPoolName}
-    CognitoUserPoolClient:
-      Type: AWS::Cognito::UserPoolClient
-      Properties:
-        ClientName: ${self:custom.stages.${self:provider.stage}.cognitoAppClientName}
-        UserPoolId:
-          Ref: CognitoUserPool
+  buckets:
+    dev: ${env:BUCKET_NAME_NONPROD}
+    feature: ${env:BUCKET_NAME_NONPROD}
+    main: ${env:BUCKET_NAME_MAIN}

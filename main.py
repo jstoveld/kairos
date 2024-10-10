@@ -52,7 +52,6 @@
 
 
 import os
-from dotenv import load_dotenv
 from fastapi import FastAPI, File, UploadFile, HTTPException, Depends
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
@@ -63,6 +62,7 @@ from botocore.exceptions import NoCredentialsError
 from PIL import Image, ImageOps, ImageFilter
 import io
 from mangum import Mangum
+from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
