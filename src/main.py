@@ -77,7 +77,11 @@ BUCKET_NAME = os.getenv('BUCKET_NAME')
 # Initialize the Cognito client
 cognito_client = boto3.client('cognito-idp')
 USER_POOL_ID = os.getenv('COGNITO_USER_POOL_ID')
-CLIENT_ID = os.getenv('COGNITO_CLIENT_ID')
+CLIENT_ID = os.getenv('COGNITO_APP_CLIENT_ID')
+
+# Ensure the environment variables are loaded correctly
+if not USER_POOL_ID or not CLIENT_ID:
+    raise ValueError("Missing Cognito configuration. Please check your environment variables.")
 
 # JWT settings
 SECRET_KEY = os.getenv('SECRET_KEY')
@@ -93,6 +97,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 class UserRegister(BaseModel):
     username: str
     password: str
+    email: str
 
 @app.post("/register")
 async def register(user: UserRegister):
@@ -100,7 +105,13 @@ async def register(user: UserRegister):
         response = cognito_client.sign_up(
             ClientId=CLIENT_ID,
             Username=user.username,
-            Password=user.password
+            Password=user.password,
+            UserAttributes=[
+                {
+                    'Name': 'email',
+                    'Value': user.email
+                }
+            ]
         )
         return {"message": "User registered successfully"}
     except cognito_client.exceptions.UsernameExistsException:
