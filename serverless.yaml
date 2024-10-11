@@ -1,23 +1,17 @@
 service: kairos
 
-org: null
-app: null
-
 provider:
   name: aws
   runtime: python3.11
   region: us-east-1
   environment:
     SECRET_KEY: ${env:SECRET_KEY}
-    COGNITO_USER_POOL_ID: ${env:COGNITO_USER_POOL_ID}
-    COGNITO_APP_CLIENT_ID: ${env:COGNITO_APP_CLIENT_ID}
-    COGNITO_REGION: ${env:COGNITO_REGION}
     BUCKET_NAME: ${self:custom.buckets.${self:provider.stage}}
     STAGE: ${opt:stage, 'dev'}
 
 functions:
   app:
-    handler: main.handler
+    handler: src.Function.main.handler
     events:
       - http:
           path: /
@@ -33,7 +27,7 @@ plugins:
 
 custom:
   wsgi:
-    app: main.app
+    app: src.Function.main.app
     packRequirements: false
   pythonRequirements:
     dockerizePip: true
