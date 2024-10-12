@@ -188,3 +188,9 @@ node_modules/
 
 # Log files
 *.log
+
+# Ignore all package directories
+**/package/
+
+## zipped packages
+*.zip
