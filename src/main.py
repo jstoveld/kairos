@@ -51,7 +51,8 @@
 #2. Caching images to improve performance
 #3. Error handling and validation
 #4. Message queue to process image transformations asynchronously
-
+import json
+from botocore.exceptions import ClientError
 import os
 from fastapi import FastAPI, HTTPException, Depends, status, UploadFile, File
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -66,11 +67,28 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 from PIL import Image, ImageOps, ImageFilter
 import io
+from typing import List
 
 # Load environment variables from .env file
 load_dotenv()
+AWS_REGION = os.getenv(f'AWS_REGION')
 
 app = FastAPI()
+
+# Initialize SQS client
+sqs = boto3.client('sqs', AWS_REGION)
+
+# Get the environment
+ENVIRONMENT = os.getenv('ENVIRONMENT', 'nonprod')
+
+# Get the appropriate queue URL
+QUEUE_URL = os.getenv(f'SQS_QUEUE_URL_{ENVIRONMENT.upper()}')
+
+if not QUEUE_URL:
+    raise ValueError(f"Missing SQS queue URL for {ENVIRONMENT} environment")
+
+
+
 
 # Initialize the S3 client
 s3 = boto3.client('s3')
@@ -298,6 +316,40 @@ async def list_images(token: str = Depends(oauth2_scheme), page: int = 1, limit:
     except NoCredentialsError:
         raise HTTPException(status_code=500, detail="Credentials not available")
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+## Transformation of Images
+@app.post("/images/{image_id}/queue-transform")
+async def queue_image_transform(
+    image_id: str, 
+    operations: List[dict], 
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        # Verify the token
+        cognito_client.get_user(AccessToken=token)
+        
+        # Prepare the message
+        message = {
+            "image_id": image_id,
+            "operations": operations,
+            "environment": ENVIRONMENT
+        }
+        
+        # Send message to SQS
+        response = sqs.send_message(
+            QueueUrl=QUEUE_URL,
+            MessageBody=json.dumps(message)
+        )
+        
+        return {
+            "message": f"Image transformation queued successfully in {ENVIRONMENT} environment",
+            "message_id": response['MessageId']
+        }
+    except cognito_client.exceptions.NotAuthorizedException:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    except ClientError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 # Create a handler for AWS Lambda
