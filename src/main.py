@@ -139,6 +139,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.get("/users/me")
 async def read_users_me(token: str = Depends(oauth2_scheme)):
     try:
