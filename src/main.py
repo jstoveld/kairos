@@ -202,6 +202,37 @@ async def get_image(image_id: str, token: str = Depends(oauth2_scheme)):
         raise HTTPException(status_code=500, detail="Credentials not available")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.post("/images")
+async def upload_image(file: UploadFile = File(...), token: str = Depends(oauth2_scheme)):
+    try:
+        # Verify the token
+        response = cognito_client.get_user(
+            AccessToken=token
+        )
+        
+        # Read the file content
+        file_content = await file.read()
+        
+        # Upload the file to S3
+        s3.put_object(Bucket=BUCKET_NAME, Key=file.filename, Body=file_content, ContentType=file.content_type)
+        
+        # Construct the image URL
+        image_url = f"https://{BUCKET_NAME}.s3.amazonaws.com/{file.filename}"
+        
+        # Return the image details
+        return {
+            "filename": file.filename,
+            "url": image_url,
+            "size": len(file_content),
+            "content_type": file.content_type
+        }
+    except cognito_client.exceptions.NotAuthorizedException:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    except NoCredentialsError:
+        raise HTTPException(status_code=500, detail="Credentials not available")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/images/{image_id}/transform")
 async def transform_image(image_id: str, operation: str, token: str = Depends(oauth2_scheme)):
