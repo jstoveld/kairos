@@ -4,6 +4,11 @@ import boto3
 from PIL import Image, ImageOps
 import io
 from dotenv import load_dotenv
+import logging
+
+## Initialize Logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -59,14 +64,21 @@ def process_message(message):
 
 def main():
     print(f"Starting worker for {ENVIRONMENT} environment")
+    logger.info(f"Worker started for {ENVIRONMENT} environment")
+
     while True:
         try:
+            print(f"Attempting to receive messages from queue: {QUEUE_URL}")
+            logger.info(f"Attempting to receive messages from queue: {QUEUE_URL}")
+
             # Receive message from SQS queue
             response = sqs.receive_message(
                 QueueUrl=QUEUE_URL,
                 MaxNumberOfMessages=1,
                 WaitTimeSeconds=20
             )
+            print(f"Receive message response: {response}")
+            logger.debug(f"Receive message response: {response}")
 
             # Process messages
             if 'Messages' in response:
@@ -78,8 +90,15 @@ def main():
                         QueueUrl=QUEUE_URL,
                         ReceiptHandle=message['ReceiptHandle']
                     )
+                    print(f"Processed and deleted message: {message['MessageId']}")
+                    logger.info(f"Processed and deleted message: {message['MessageId']}")
+            else:
+                print("No messages received.")
+                logger.info("No messages received.")
         except Exception as e:
             print(f"Error receiving/processing message: {str(e)}")
+            logger.error(f"Error receiving/processing message: {str(e)}", exc_info=True)
+
 
 if __name__ == "__main__":
     main()
