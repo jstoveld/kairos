@@ -6,6 +6,7 @@
 # 3. Secure endponits with JWT.
 
 ## Authentication Endpoints
+## DONE
 # 1. Register (POST) new user 
 # /register
     # Response will be user object with JWT token.
@@ -14,7 +15,8 @@
     # Response will be user object with JWT token.
 
 ## Image Management
-#1. User must be able to upload images.
+
+#1. User must be able to upload images. DONE
 #2. Users must be able to perform  various operations on images.
     # Resize
     # Crop
@@ -32,7 +34,7 @@
 #4. List all uploaded images by a user with metadata.
 
 ## Image Management Endpoints
-#1. Upload an image. (POST)
+#1. Upload an image. (POST) -- DONE
     # /images
     # Response: Upload image details, (URL, metadata)
 #2. Apply Transformation to an image (POST)
@@ -170,17 +172,32 @@ async def list_s3_objects(token: str = Depends(oauth2_scheme)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/images")
-async def upload_image(file: UploadFile = File(...), token: str = Depends(oauth2_scheme)):
+@app.get("/images/{image_id}")
+async def get_image(image_id: str, token: str = Depends(oauth2_scheme)):
     try:
+        # Verify the token
         response = cognito_client.get_user(
             AccessToken=token
         )
-        contents = await file.read()
-        s3.put_object(Bucket=BUCKET_NAME, Key=file.filename, Body=contents)
-        return {"filename": file.filename, "url": f"https://{BUCKET_NAME}.s3.amazonaws.com/{file.filename}"}
+        
+        # Fetch the image from S3
+        obj = s3.get_object(Bucket=BUCKET_NAME, Key=image_id)
+        
+        # Construct the image URL
+        image_url = f"https://{BUCKET_NAME}.s3.amazonaws.com/{image_id}"
+        
+        # Return the image details
+        return {
+            "filename": image_id,
+            "url": image_url,
+            "size": obj['ContentLength'],
+            "content_type": obj['ContentType'],
+            "last_modified": obj['LastModified'].isoformat()
+        }
     except cognito_client.exceptions.NotAuthorizedException:
         raise HTTPException(status_code=401, detail="Invalid token")
+    except s3.exceptions.NoSuchKey:
+        raise HTTPException(status_code=404, detail="Image not found")
     except NoCredentialsError:
         raise HTTPException(status_code=500, detail="Credentials not available")
     except Exception as e:
