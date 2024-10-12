@@ -4,6 +4,9 @@ Backend image processor
 **Kairos**: A Greek word meaning "opportune moment" or "key moment," implying a solution that
 helps users seize the perfect image.
 
+**SWAGGER DOC**
+/docs
+
 **Instructions**
 https://roadmap.sh/projects/image-processing-service
 
