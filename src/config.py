@@ -6,9 +6,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def load_config():
-    with open('context.yaml', 'r') as file:
+    with open('../context.yaml', 'r') as file:
         config = yaml.safe_load(file)
     
+    # Set environment based on deployment context or default to 'nonprod'
     environment = os.getenv('ENVIRONMENT', 'nonprod')
     env_config = config['environments'][environment]
 

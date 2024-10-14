@@ -1,9 +1,9 @@
-### REQIREMENTS ###
+### REQUIREMENTS ###
 
 ## Authentication
 # 1. User needs to be able to create an account.
 # 2. User needs to be able to log in.
-# 3. Secure endponits with JWT.
+# 3. Secure endpoints with JWT.
 
 ## Authentication Endpoints
 ## DONE
@@ -17,7 +17,7 @@
 ## Image Management
 
 #1. User must be able to upload images. DONE
-#2. Users must be able to perform  various operations on images.
+#2. Users must be able to perform various operations on images.
     # Resize
     # Crop
     # Rotate
@@ -52,39 +52,40 @@
 #3. Error handling and validation
 #4. Message queue to process image transformations asynchronously
 
-
 import json
-from botocore.exceptions import ClientError
 import os
+from datetime import datetime, timedelta
+from typing import List, Optional
+
+import boto3
+from botocore.exceptions import ClientError, NoCredentialsError
 from fastapi import FastAPI, HTTPException, Depends, status, UploadFile, File
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
-from passlib.context import CryptContext
-from datetime import datetime, timedelta
-from typing import Optional
-import boto3
-from botocore.exceptions import NoCredentialsError
 from mangum import Mangum
 from dotenv import load_dotenv
 from pydantic import BaseModel
-from PIL import Image, ImageOps, ImageFilter
+from PIL import Image, ImageOps
 import io
-from typing import List
+from config import load_config
 
 # Load environment variables from .env file
 load_dotenv()
 
+# Load configuration
+config = load_config()
+
 app = FastAPI()
 
-# Load environment variables
-AWS_REGION = os.getenv('AWS_REGION')
-ENVIRONMENT = os.getenv('ENVIRONMENT', 'nonprod')
-QUEUE_URL = os.getenv(f'SQS_QUEUE_URL_{ENVIRONMENT.upper()}')
-SNS_TOPIC_ARN = os.getenv(f'SNS_TOPIC_ARN_{ENVIRONMENT.upper()}')
-BUCKET_NAME = os.getenv('BUCKET_NAME')
-USER_POOL_ID = os.getenv('COGNITO_USER_POOL_ID')
-CLIENT_ID = os.getenv('COGNITO_APP_CLIENT_ID')
-SECRET_KEY = os.getenv('SECRET_KEY')
+# Load environment variables from config
+AWS_REGION = config['AWS_REGION']
+ENVIRONMENT = config['ENVIRONMENT']
+QUEUE_URL = config['SQS_QUEUE_URL']
+SNS_TOPIC_ARN = config['SNS_TOPIC_ARN']
+BUCKET_NAME = config['BUCKET_NAME']
+USER_POOL_ID = config['COGNITO_USER_POOL_ID']
+CLIENT_ID = config['COGNITO_APP_CLIENT_ID']
+SECRET_KEY = config['SECRET_KEY']
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -104,7 +105,6 @@ class Operation(BaseModel):
 
 class TransformRequest(BaseModel):
     operations: List[Operation]
-
 
 class UserRegister(BaseModel):
     username: str
@@ -150,7 +150,6 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         raise HTTPException(status_code=401, detail="Incorrect username or password")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @app.get("/users/me")
 async def read_users_me(token: str = Depends(oauth2_scheme)):

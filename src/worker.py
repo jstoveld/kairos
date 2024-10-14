@@ -5,6 +5,7 @@ from PIL import Image, ImageOps
 import io
 from dotenv import load_dotenv
 import logging
+from config import load_config
 
 ## Initialize Logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -13,6 +14,8 @@ logger = logging.getLogger(__name__)
 # Load environment variables
 load_dotenv()
 
+# Load configuration
+config = load_config()
 
 # Get environment variables
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'nonprod')
