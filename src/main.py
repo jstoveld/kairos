@@ -51,6 +51,8 @@
 #2. Caching images to improve performance
 #3. Error handling and validation
 #4. Message queue to process image transformations asynchronously
+
+
 import json
 from botocore.exceptions import ClientError
 import os
@@ -71,48 +73,38 @@ from typing import List
 
 # Load environment variables from .env file
 load_dotenv()
-AWS_REGION = os.getenv(f'AWS_REGION')
 
 app = FastAPI()
 
-# Initialize SQS client
-sqs = boto3.client('sqs', AWS_REGION)
-
-# Get the environment
+# Load environment variables
+AWS_REGION = os.getenv('AWS_REGION')
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'nonprod')
-
-# Get the appropriate queue URL
 QUEUE_URL = os.getenv(f'SQS_QUEUE_URL_{ENVIRONMENT.upper()}')
-
-if not QUEUE_URL:
-    raise ValueError(f"Missing SQS queue URL for {ENVIRONMENT} environment")
-
-
-
-
-# Initialize the S3 client
-s3 = boto3.client('s3')
+SNS_TOPIC_ARN = os.getenv(f'SNS_TOPIC_ARN_{ENVIRONMENT.upper()}')
 BUCKET_NAME = os.getenv('BUCKET_NAME')
-
-# Initialize the Cognito client
-cognito_client = boto3.client('cognito-idp')
 USER_POOL_ID = os.getenv('COGNITO_USER_POOL_ID')
 CLIENT_ID = os.getenv('COGNITO_APP_CLIENT_ID')
-
-# Ensure the environment variables are loaded correctly
-if not USER_POOL_ID or not CLIENT_ID:
-    raise ValueError("Missing Cognito configuration. Please check your environment variables.")
-
-# JWT settings
 SECRET_KEY = os.getenv('SECRET_KEY')
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Initialize AWS clients
+s3 = boto3.client('s3', region_name=AWS_REGION)
+sns_client = boto3.client('sns', region_name=AWS_REGION)
+sqs = boto3.client('sqs', region_name=AWS_REGION)
+cognito_client = boto3.client('cognito-idp', region_name=AWS_REGION)
 
-# OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+# Define the body model
+class Operation(BaseModel):
+    operation: str
+    width: int
+    height: int
+
+class TransformRequest(BaseModel):
+    operations: List[Operation]
+
 
 class UserRegister(BaseModel):
     username: str
@@ -323,7 +315,7 @@ async def list_images(token: str = Depends(oauth2_scheme), page: int = 1, limit:
 @app.post("/images/{image_id}/queue-transform")
 async def queue_image_transform(
     image_id: str, 
-    operations: List[dict], 
+    request: TransformRequest, 
     token: str = Depends(oauth2_scheme)
 ):
     try:
@@ -333,7 +325,7 @@ async def queue_image_transform(
         # Prepare the message
         message = {
             "image_id": image_id,
-            "operations": operations,
+            "operations": [op.dict() for op in request.operations],  # Convert to dictionary
             "environment": ENVIRONMENT
         }
         
