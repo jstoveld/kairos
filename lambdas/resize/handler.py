@@ -8,7 +8,7 @@ import os
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'nonprod')
 AWS_REGION = os.getenv('AWS_REGION', 'us-east-1')
 BUCKET_NAME = os.getenv('BUCKET_NAME_NONPROD') if ENVIRONMENT == 'nonprod' else os.getenv('BUCKET_NAME')
-SNS_TOPIC_ARN = os.getenv('SNS_TOPIC_ARN')
+SNS_TOPIC_ARN = os.environ[f'SNS_TOPIC_ARN_{ENVIRONMENT.upper()}']
 
 # Initialize AWS clients
 s3 = boto3.client('s3', region_name=AWS_REGION)
