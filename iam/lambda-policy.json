@@ -8,7 +8,7 @@
         "sqs:DeleteMessage",
         "sqs:GetQueueAttributes"
       ],
-      "Resource": "arn:aws:sqs:us-east-1:${AWS_ACCOUNT_ID}:kairos-image-processing-queue-*"
+      "Resource": "arn:aws:sqs:us-east-1:*:kairos-image-processing-queue-*"
     },
     {
       "Effect": "Allow",
@@ -17,9 +17,18 @@
         "s3:PutObject"
       ],
       "Resource": [
-        "arn:aws:s3:::kairos-app-bucket-main/*",
+        "arn:aws:s3:::kairos-app-bucket-prod/*",
         "arn:aws:s3:::kairos-app-bucket-nonprod/*"
       ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "sns:Publish",
+        "sns:Subscribe",
+        "sns:Unsubscribe"
+      ],
+      "Resource": "arn:aws:sns:us-east-1:*:kairos-notification-topic-*"
     },
     {
       "Effect": "Allow",
