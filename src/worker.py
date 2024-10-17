@@ -23,14 +23,19 @@ QUEUE_URL = os.getenv(f'SQS_QUEUE_URL_{ENVIRONMENT.upper()}')
 AWS_REGION = os.getenv('AWS_REGION')
 BUCKET_NAME = os.getenv(f'BUCKET_NAME_{ENVIRONMENT.upper()}')
 LAMBDA_FUNCTION_NAME = os.getenv('LAMBDA_FUNCTION_NAME')
+SNS_TOPIC_ARN = os.getenv(f'SNS_TOPIC_ARN_{ENVIRONMENT.upper()}')
 
 # Initialize AWS clients
 sqs = boto3.client('sqs', region_name=AWS_REGION)
 s3 = boto3.client('s3')
 lambda_client = boto3.client('lambda', region_name=AWS_REGION)
+sns = boto3.client('sns', region_name=AWS_REGION)
 
 if not QUEUE_URL:
     raise ValueError(f"Missing SQS queue URL for {ENVIRONMENT} environment")
+
+if not SNS_TOPIC_ARN:
+    raise ValueError(f"Missing SNS Topic ARN for {ENVIRONMENT} environment")
 
 def process_image(image, operations):
     for operation in operations:
@@ -42,6 +47,19 @@ def process_image(image, operations):
             image = ImageOps.grayscale(image)
         # Add more operations as needed
     return image
+
+def publish_to_sns(message):
+    try:
+        response = sns.publish(
+            TopicArn=SNS_TOPIC_ARN,
+            Message=json.dumps(message),
+            Subject='Image Processing Complete'
+        )
+        logger.info(f"Message published to SNS: {response['MessageId']}")
+        return True
+    except Exception as e:
+        logger.error(f"Error publishing to SNS: {str(e)}")
+        return False
 
 def process_message_locally(message_body):
     image_id = message_body['image_id']
@@ -59,9 +77,22 @@ def process_message_locally(message_body):
         buffer = io.BytesIO()
         processed_image.save(buffer, format="PNG")
         buffer.seek(0)
-        s3.put_object(Bucket=BUCKET_NAME, Key=f"processed-{image_id}", Body=buffer)
+        processed_key = f"processed-{image_id}"
+        s3.put_object(Bucket=BUCKET_NAME, Key=processed_key, Body=buffer)
 
         logger.info(f"Successfully processed image: {image_id}")
+
+        # Publish to SNS
+        sns_message = {
+            'image_id': image_id,
+            'processed_image_key': processed_key,
+            'operations': operations
+        }
+        if publish_to_sns(sns_message):
+            logger.info(f"SNS notification sent for image: {image_id}")
+        else:
+            logger.warning(f"Failed to send SNS notification for image: {image_id}")
+
         return True
     except Exception as e:
         logger.error(f"Error processing image {image_id}: {str(e)}")
@@ -83,6 +114,7 @@ def invoke_lambda(payload):
 
 def main():
     logger.info(f"Starting worker for {ENVIRONMENT} environment")
+    logger.info(f"Using SNS Topic ARN: {SNS_TOPIC_ARN}")
 
     while True:
         try:
