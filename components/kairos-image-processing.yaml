@@ -1,0 +1,189 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Kairos Image Processing Infrastructure'
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [prod, nonprod]
+    Default: nonprod
+
+Conditions:
+  IsProd: !Equals [!Ref Environment, prod]
+
+Resources:
+  # S3 Bucket
+  ImageBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub kairos-image-processing-${Environment}
+
+  # Cognito User Pool
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub kairos-user-pool-${Environment}
+
+  # Cognito User Pool Client
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub kairos-app-client-${Environment}
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+
+  # SQS Queue
+  ImageProcessingQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub kairos-image-processing-queue-${Environment}
+
+  # SNS Topic
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub kairos-notification-topic-${Environment}
+
+  # Lambda Execution Role
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub ${ImageBucket.Arn}/*
+        - PolicyName: SQSAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                Resource: !GetAtt ImageProcessingQueue.Arn
+        - PolicyName: SNSAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref NotificationTopic
+
+  # Image Upload Lambda
+  ImageUploadFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub kairos-image-upload-${Environment}
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          
+          def lambda_handler(event, context):
+              # TODO: Implement image upload logic
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps('Image uploaded successfully')
+              }
+      Runtime: python3.11
+
+  # Image Processing Lambda
+  ImageProcessingFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub kairos-image-processing-${Environment}
+      Handler: index.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          
+          def lambda_handler(event, context):
+              # TODO: Implement image processing logic
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps('Image processed successfully')
+              }
+      Runtime: python3.11
+
+  # API Gateway
+  ApiGateway:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub kairos-api-${Environment}
+      ProtocolType: HTTP
+
+  # API Gateway Stage
+  ApiGatewayStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref ApiGateway
+      StageName: $default
+      AutoDeploy: true
+
+  # API Gateway Integration for Image Upload
+  ApiGatewayIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref ApiGateway
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt ImageUploadFunction.Arn
+      PayloadFormatVersion: '2.0'
+
+  # API Gateway Route
+  ApiGatewayRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref ApiGateway
+      RouteKey: 'POST /upload'
+      Target: !Join
+        - /
+        - - integrations
+          - !Ref ApiGatewayIntegration
+
+  # Lambda Permission for API Gateway
+  LambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ImageUploadFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*
+
+Outputs:
+  ApiEndpoint:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/
+  UserPoolId:
+    Description: "Cognito User Pool ID"
+    Value: !Ref UserPool
+  UserPoolClientId:
+    Description: "Cognito User Pool Client ID"
+    Value: !Ref UserPoolClient
+  S3BucketName:
+    Description: "S3 Bucket Name"
+    Value: !Ref ImageBucket
+  SQSQueueUrl:
+    Description: "SQS Queue URL"
+    Value: !Ref ImageProcessingQueue
+  SNSTopicArn:
+    Description: "SNS Topic ARN"
+    Value: !Ref NotificationTopic
