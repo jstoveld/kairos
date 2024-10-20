@@ -194,3 +194,7 @@ node_modules/
 
 ## zipped packages
 *.zip
+
+
+## VS CODE
+.vscode/
